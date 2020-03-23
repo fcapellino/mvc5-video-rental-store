@@ -1,4 +1,5 @@
 ﻿using System.Data.Entity;
+using System.Data.Entity.ModelConfiguration.Conventions;
 using Microsoft.AspNet.Identity.EntityFramework;
 using VideoRentalStore.Domain.Entities;
 
@@ -9,11 +10,19 @@ namespace VideoRentalStore.DataAccess
         public ApplicationDbContext()
             : base("DefaultConnection", throwIfV1Schema: false)
         {
+            Configuration.LazyLoadingEnabled = false;
         }
 
         public static ApplicationDbContext Create()
         {
             return new ApplicationDbContext();
+        }
+
+        protected override void OnModelCreating(DbModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+            modelBuilder.Conventions.Remove<OneToManyCascadeDeleteConvention>();
+            modelBuilder.Conventions.Remove<ManyToManyCascadeDeleteConvention>();
         }
 
         public DbSet<Client> Clients { get; set; }

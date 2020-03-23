@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace VideoRentalStore.Domain.Entities
 {
-    [Table("Genres")]
+    [Table("MovieGenres")]
     public class MovieGenre
     {
         [Key]
