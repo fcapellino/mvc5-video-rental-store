@@ -145,16 +145,9 @@ namespace VideoRentalStore.Web.Controllers
         {
             try
             {
-                if (!ModelState.IsValid)
-                {
-                    createEditMovieViewModel.Genres = (await _movieGenresDataAccess.GetAllAsync())
-                        .OrderBy(x => x.Name);
-                    return PartialView("_Edit", createEditMovieViewModel);
-                }
-
                 var movie = Mapper.Map<CreateEditMovieViewModel, Movie>(createEditMovieViewModel);
                 var rentalsCount = (await _rentalsDataAccess.GetAllAsync())
-                    .Count(a => a.Id == createEditMovieViewModel.Id);
+                    .Count(a => a.MovieId == createEditMovieViewModel.Id);
 
                 if (movie.TotalUnits >= rentalsCount)
                 {
@@ -163,6 +156,13 @@ namespace VideoRentalStore.Web.Controllers
                 else
                 {
                     ModelState.AddModelError("errorTotalUnits", "Must enter a valid quantity.");
+                }
+
+                if (!ModelState.IsValid)
+                {
+                    createEditMovieViewModel.Genres = (await _movieGenresDataAccess.GetAllAsync())
+                        .OrderBy(x => x.Name);
+                    return PartialView("_Edit", createEditMovieViewModel);
                 }
 
                 await _moviesDataAccess.UpdateAsync(movie);
