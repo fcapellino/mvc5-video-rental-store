@@ -1,0 +1,175 @@
+﻿@{
+    ViewBag.Title = "Users";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var adminUser = User.IsInRole("Administrator");
+}
+
+<h3>Users</h3>
+@if (adminUser)
+{
+    <p>
+        <button class='btn btn-link js-new' style="padding-left: 0px">New User</button>
+    </p>
+}
+<table id="usersTable" class="table table-bordered table-hover">
+    <thead>
+        <tr>
+            <th>
+                @Html.DisplayName("#")
+            </th>
+            <th>
+                @Html.DisplayName("Name")
+            </th>
+            <th>
+                @Html.DisplayName("Telephone")
+            </th>
+            <th>
+                @Html.DisplayName("Address")
+            </th>
+            <th>
+                @Html.DisplayName("Email")
+            </th>
+            <th>
+                @Html.DisplayName("Added date")
+            </th>
+            <th>
+                @Html.DisplayName("Type")
+            </th>
+            <th>
+                @Html.DisplayName("Actions")
+            </th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+@section scripts
+{
+    <script>
+        $(document).ready(function () {
+            window.adminUser = '@adminUser';
+            window.dtableExtend = jQuery.extend(jQuery.fn.dataTableExt.oSort, {
+                'date-uk-pre': function (a) {
+                    var ukDatea = a.split('/');
+                    return (ukDatea[2] + ukDatea[1] + ukDatea[0]) * 1;
+                },
+                'date-uk-asc': function (a, b) {
+                    return ((a < b) ? -1 : ((a > b) ? 1 : 0));
+                },
+                'date-uk-desc': function (a, b) {
+                    return ((a < b) ? 1 : ((a > b) ? -1 : 0));
+                }
+            });
+            window.dtable = $('#usersTable').DataTable({
+                'orderMulti': false,
+                'order': [[1, 'asc']],
+                'bLengthChange': false,
+                'lengthMenu': [[5], [5]],
+                'length': 5,
+                ajax: {
+                    url: '/Users/GetUsersList/',
+                    dataSrc: 'resources'
+                },
+                columns: [
+                    {
+                        data: 'id',
+                        width: 30,
+                        orderable: false,
+                        render: function (data, type, row, meta) {
+                            var index = meta.row + meta.settings._iDisplayStart + 1;
+                            return padLeft(index, 2, 0);
+                        }
+                    },
+                    {
+                        data: 'fullName'
+                    },
+                    {
+                        data: 'telephone'
+                    },
+                    {
+                        data: 'address'
+                    },
+                    {
+                        data: 'email'
+                    },
+                    {
+                        data: 'addedDate',
+                        type: 'date-uk'
+                    },
+                    {
+                        data: 'type'
+                    },
+                    {
+                        data: 'id',
+                        width: 100,
+                        orderable: false,
+                        render: function (data, type, user) {
+                            if (JSON.parse(window.adminUser.toLowerCase()) && user.type === 'Basic') {
+                                return "<button userId=" + user.id + " class='btn btn-link js-edit'><span class='glyphicon glyphicon-pencil'></span></button>" +
+                                    "<button userId=" + user.id + " class='btn btn-link js-delete'><span class='glyphicon glyphicon-trash'></span></button>";
+                            }
+                            else {
+                                return null;
+                            }
+                        }
+                    }
+                ]
+            });
+            window.httpPostResult = function (result) {
+                if (result.success == true) {
+                    window.dtable.draw().ajax.reload();
+                    toastr.success('The operation was completed successfully.', null, { 'positionClass': 'toast-bottom-right' });
+                    $('#modalDialog').modal('hide');
+                } else if (result.success == false) {
+                    toastr.error('An error has occurred.', null, { 'positionClass': 'toast-bottom-right' });
+                } else {
+                    $('#modalContent').html(result);
+                }
+            };
+        });
+    </script>
+    @if (adminUser)
+    {
+        <script>
+            $(document).on('click', '.js-new', function () {
+                $.ajax({
+                    url: '/Users/Create/',
+                    type: 'GET',
+                    success: function (data) {
+                        $('#modalContent').html(data);
+                        $('#modalDialog').find('.modal-dialog').css({
+                            width: '550px'
+                        });
+                        $('#modalDialog').modal('show');
+                    }
+                });
+            });
+            $(document).on('click', '.js-edit', function () {
+                var button = $(this);
+                $.ajax({
+                    url: '/Users/Edit/' + button.attr('userId'),
+                    type: 'GET',
+                    success: function (data) {
+                        $('#modalContent').html(data);
+                        $('#modalDialog').find('.modal-dialog').css({
+                            width: '400px'
+                        });
+                        $('#modalDialog').modal('show');
+                    }
+                });
+            });
+            $(document).on('click', '.js-delete', function () {
+                var button = $(this);
+                bootbox.confirm('Do you want to delete this user?', function (response) {
+                    if (response) {
+                        $.ajax({
+                            url: '/Users/Delete/' + button.attr('userId'),
+                            type: 'POST',
+                            success: httpPostResult
+                        })
+                    }
+                });
+            });
+        </script>
+    }
+}
