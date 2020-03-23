@@ -22,7 +22,7 @@ namespace VideoRentalStore.Web
             builder.RegisterFilterProvider();
 
             builder.RegisterType<ApplicationDbContext>()
-                .InstancePerRequest();
+                .InstancePerDependency();
 
             builder.RegisterType<ClientsDataAccessObject>()
                 .As<IDataAccess<Client>>()
