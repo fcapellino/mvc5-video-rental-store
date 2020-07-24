@@ -1,0 +1,118 @@
+﻿@model VideoRentalStore.Web.ViewModels.CreateEditMovieViewModel
+
+<div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+    <h4 class="modal-title" id="myModalLabel">Edit Movie</h4>
+</div>
+
+@using (Ajax.BeginForm("Edit", "Movies", new AjaxOptions { HttpMethod = "POST", OnSuccess = "httpPostResult" }))
+{
+    <div class="modal-body">
+        @Html.HiddenFor(model => model.Id)
+        @Html.HiddenFor(model => model.Base64Poster)
+
+        <div class="col-xs-6">
+            <div class="form-group" style="margin-bottom: 0px;margin-bottom:5px;">
+                @Html.LabelFor(model => model.Name, htmlAttributes: new { @class = "control-label" })
+                @Html.EditorFor(model => model.Name, new { htmlAttributes = new { @class = "form-control", @id = "typeaheadControl" } })
+                @Html.ValidationMessageFor(model => model.Name, "", new { @class = "label label-danger" })
+            </div>
+            <div class="form-group" style="margin-bottom: 0px;margin-bottom:5px;">
+                @Html.LabelFor(model => model.ReleaseDate, htmlAttributes: new { @class = "control-label" })
+                @Html.EditorFor(model => model.ReleaseDate, new { htmlAttributes = new { @class = "form-control", @id = "releaseDate" } })
+                @Html.ValidationMessageFor(model => model.ReleaseDate, "", new { @class = "label label-danger" })
+            </div>
+            <div class="form-group" style="margin-bottom: 0px;margin-bottom:5px;">
+                @Html.LabelFor(model => model.TotalUnits, htmlAttributes: new { @class = "control-label" })
+                @Html.EditorFor(model => model.TotalUnits, new { htmlAttributes = new { @type = "number", @min = "1", @max = "20", @class = "form-control" } })
+                @Html.ValidationMessageFor(model => model.TotalUnits, "", new { @class = "label label-danger" })
+                @Html.ValidationMessage("errorTotalUnits", new { @class = "label label-danger" })
+            </div>
+            <div class="form-group" style="margin-bottom: 0px;margin-bottom:5px;">
+                @Html.Label("MoviePoster", htmlAttributes: new { @class = "control-label" })
+                <input type="file" id="posterInput" name="avatar" accept="image/png, image/jpeg" class="control-label" style="color: transparent;">
+                @Html.ValidationMessageFor(model => model.Base64Poster, "", new { @class = "label label-danger" })
+            </div>
+            <div class="form-group" style="margin-bottom: 0px;margin-bottom:5px;">
+                @Html.LabelFor(model => model.GenreId, "Genre", htmlAttributes: new { @class = "control-label" })
+                @Html.DropDownListFor(model => model.GenreId, new SelectList(Model.Genres, "Id", "Name"), "Select a genre...", htmlAttributes: new { @class = "form-control", @id = "genre" })
+                @Html.ValidationMessageFor(model => model.GenreId, "", new { @class = "label label-danger" })
+            </div>
+        </div>
+        <div class="col-xs-6">
+            @Html.LabelFor(model => model.Description, htmlAttributes: new { @class = "control-label" })
+            @Html.EditorFor(model => model.Description, new { htmlAttributes = new { @class = "form-control", @style = "height: 328px", @id = "description" } })
+            @Html.ValidationMessageFor(model => model.Description, "", new { @class = "label label-danger" })
+        </div>
+    </div>
+    <div class="modal-footer" style="clear:both">
+        <button class="btn" type="button" data-dismiss="modal">Cancel</button>
+        <input class="btn btn-primary" type="submit" value="Submit" />
+    </div>
+}
+
+<script>
+    $(document).ready(function () {
+        var setBase64Poster = function (blob) {
+            var reader = new FileReader();
+            reader.readAsDataURL(blob);
+            reader.onloadend = function () {
+                var base64data = reader.result.split(',')[1];
+                $("input[name=Base64Poster]").val(base64data);
+            };
+        };
+        var moviesList = new Bloodhound({
+            datumTokenizer: function (datum) {
+                return Bloodhound.tokenizers.whitespace(datum.value);
+            },
+            queryTokenizer: Bloodhound.tokenizers.whitespace,
+            remote: {
+                url: "https://api.themoviedb.org/3/search/movie?query=%QUERY&language=en-En&api_key=" + window.privateApiKey.toLowerCase(),
+                filter: function (movies) {
+                    return $.map(movies.results, function (movie) {
+                        return {
+                            title: movie.title,
+                            release_date: movie.release_date,
+                            overview: movie.overview,
+                            poster_path: movie.poster_path,
+                            genre_ids: movie.genre_ids
+                        };
+                    });
+                }
+            }
+        });
+        moviesList.initialize();
+
+        $('#typeaheadControl').typeahead({
+            hint: true,
+            highlight: true,
+            minLength: 1,
+            limit: 5
+        }, {
+            display: 'title',
+            displayKey: 'title',
+            source: moviesList.ttAdapter(),
+            templates: {
+                suggestion: Handlebars.compile("<div>{{title}}</div> <small>{{release_date}}</small>")
+            }
+        }).bind("typeahead:selected", function (obj, movie) {
+            $('#releaseDate').val(movie.release_date);
+            $('#description').val(movie.overview);
+            $('#genre').val(movie.genre_ids[0]);
+
+            fetch("https://image.tmdb.org/t/p/w154" + movie.poster_path, {
+                method: 'GET'
+            })
+                .then(response => response.blob())
+                .then(blob => {
+                    setBase64Poster(blob);
+                });
+        });
+        $("#posterInput").on("change", function(e){
+            if ($("#posterInput").val()) {
+                var blob = $("#posterInput")[0].files[0];
+                setBase64Poster(blob);
+            }
+        });
+    });
+</script>

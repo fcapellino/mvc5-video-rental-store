@@ -1,0 +1,147 @@
+﻿@model VideoRentalStore.Web.ViewModels.CreateRentalViewModel
+
+<div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+    <h4 class="modal-title" id="myModalLabel">New Rental</h4>
+</div>
+<div class="modal-body">
+    <div class="col-xs-12">
+        <div class="form-group" style="margin-bottom: 0px;margin-bottom:5px;">
+            @Html.Label("Client", htmlAttributes: new { @class = "control-label" })
+            @Html.TextBox("Client", string.Empty, htmlAttributes: new { @class = "form-control", @id = "clientTextBox" })
+            @Html.ValidationMessage("errorClientList", "You must select a client.", new { @class = "label label-danger", @id = "errorClientList", @style = "display:none" })
+            <ul id="selectedClientList" class="list-group" style="margin-top: 15px"></ul>
+        </div>
+        <div class="form-group" style="margin-bottom: 0px;margin-bottom:5px;">
+            @Html.Label("Movie", htmlAttributes: new { @class = "control-label" })
+            @Html.TextBox("Movie", string.Empty, htmlAttributes: new { @class = "form-control", @id = "movieTextBox" })
+            @Html.ValidationMessage("errorMoviesList", "You must select at least one movie.", new { @class = "label label-danger", @id = "errorMoviesList", @style = "display:none" })
+            <ul id="selectedMoviesList" class="list-group" style="margin-top: 15px"></ul>
+        </div>
+    </div>
+</div>
+<div class="modal-footer" style="clear:both">
+    <button class="btn" type="button" data-dismiss="modal">Cancel</button>
+    <input class="btn btn-primary js-new-submit" type="submit" value="Submit" />
+</div>
+
+<script>
+    $(document).ready(function () {
+        window.rentalViewModel = {
+            clientId: null,
+            moviesIds: []
+        };
+        var clientsList = new Bloodhound({
+            datumTokenizer: function (datum) {
+                return Bloodhound.tokenizers.whitespace(datum.value);
+            },
+            queryTokenizer: Bloodhound.tokenizers.whitespace,
+            remote: {
+                url: '/Clients/GetClientsList/?query=%QUERY',
+                filter: function (result) {
+                    return $.map(result.resources, function (client) {
+                        return {
+                            fullName: client.fullName,
+                            id: client.id
+                        };
+                    });
+                }
+            }
+        });
+        clientsList.initialize();
+        var moviesList = new Bloodhound({
+            datumTokenizer: function (datum) {
+                return Bloodhound.tokenizers.whitespace(datum.value);
+            },
+            queryTokenizer: Bloodhound.tokenizers.whitespace,
+            remote: {
+                url: '/Movies/GetAvailableMoviesList/?query=%QUERY',
+                filter: function (result) {
+                    return $.map(result.resources, function (movie) {
+                        return {
+                            name: movie.name,
+                            id: movie.id
+                        };
+                    });
+                }
+            }
+        });
+        moviesList.initialize();
+
+        window.numberMoviesList = function () {
+            var index = 0;
+            $('#selectedMoviesList').find('li').each(function () {
+                index += 1;
+                $(this).find('span:first').text(index + '.');
+            });
+        };
+        window.validateClientList = function() {
+            var valid = (window.rentalViewModel.clientId > 0);
+            $('#errorClientList').toggle(!valid);
+            return valid;
+        };
+        window.validateMoviesList = function() {
+            var valid = (window.rentalViewModel.moviesIds.length > 0);
+            $('#errorMoviesList').toggle(!valid);
+            return valid;
+        };
+
+        $('#clientTextBox').typeahead({
+            hint: true,
+            highlight: true,
+            minLength: 1,
+            limit: 5
+        }, {
+            display: 'fullName',
+            displayKey: 'fullName',
+            source: clientsList.ttAdapter(),
+            templates: {
+                suggestion: Handlebars.compile('<div>{{fullName}}</div>')
+            }
+        }).bind('typeahead:selected', function (obj, client) {
+            $('#selectedClientList').empty().append("<li class='list-group-item justify-content-between'>" + client.fullName +
+                                                      "<span class='btn btn-xs btn-primary-outline pull-right btnRemoveClient'>" +
+                                                      "<span class='glyphicon glyphicon-remove'></span></span></li>");
+
+            $('#clientTextBox').typeahead('val', null);
+            window.rentalViewModel.clientId = client.id;
+            validateClientList();
+        });
+        $(document).on('click', '.btnRemoveClient', function () {
+            $(this).parent().remove();
+            window.rentalViewModel.clientId = null;
+        });
+
+        $('#movieTextBox').typeahead({
+            hint: true,
+            highlight: true,
+            minLength: 1,
+            limit: 5
+        }, {
+            display: 'name',
+            displayKey: 'name',
+            source: moviesList.ttAdapter(),
+            templates: {
+                suggestion: Handlebars.compile('<div>{{name}}</div>')
+            }
+        }).bind("typeahead:selected", function (obj, movie) {
+            if (window.rentalViewModel.moviesIds.indexOf(movie.id) === -1) {
+                $("#selectedMoviesList").append("<li class='list-group-item justify-content-between'>" + "<span>#</span>&nbsp&nbsp&nbsp" + movie.name +
+                    "<span class='btn btn-xs btn-primary-outline pull-right btnRemoveMovie' movieId=" + movie.id + ">" +
+                    "<span class='glyphicon glyphicon-remove' ></span></span>" + "</li>");
+                window.rentalViewModel.moviesIds.push(movie.id);
+                validateMoviesList();
+                numberMoviesList();
+            }
+            $('#movieTextBox').typeahead('val', null);
+        });
+        $(document).on('click', '.btnRemoveMovie', function () {
+            $(this).parent().remove();
+            numberMoviesList();
+            var movieId = $(this).attr('movieId');
+            window.rentalViewModel.moviesIds = window.rentalViewModel.moviesIds.filter(function (elem) {
+                return elem != movieId;
+            });
+        });
+    });
+</script>
